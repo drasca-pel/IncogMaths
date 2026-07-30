@@ -1079,9 +1079,9 @@ Type your question below to begin.`,
 
     Ask experienced members of
 
-    <strong> INCOG PSD </strong>
+    <strong> INCOG PSD  </strong>
 
-    for further explanation.
+   https://incog-psd.vercel.app for further explanation.
 
   </p>
 
