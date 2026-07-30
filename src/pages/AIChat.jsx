@@ -374,8 +374,7 @@ export default function AIChat() {
 
           role: "assistant",
 
-          content:
-            "INCOG AI is temporarily unavailable.\n\nNeed human assistance?\nVisit INCOG PSD",
+          
 
           time: new Date().toLocaleTimeString([], {
 
@@ -1069,7 +1068,7 @@ Type your question below to begin.`,
 
   <h3>
 
-    Need Human Assistance?
+    Need Human Assistance? https://incog-psd.vercel.app
 
   </h3>
 
@@ -1081,23 +1080,21 @@ Type your question below to begin.`,
 
     <strong> INCOG PSD  </strong>
 
-   https://incog-psd.vercel.app for further explanation.
+    for further explanation.
 
   </p>
+  <a
+  href="https://incog-psd.vercel.app"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="font-['JetBrains_Mono'] text-xs text-[#60a5fa] bg-[#0d121b] border border-[#1e2836] hover:border-[#3b82f6] px-4 py-2.5 rounded-[8px] transition flex items-center justify-center gap-2"
+>
+  Ask Community
+</a>
 
-  <button
+  
 
-    className="incog-help-btn"
-
-    onClick={()=>{
-      // We'll connect this later.
-    }}
-
-  >
-
-    Ask the Community
-
-  </button>
+  
 
 </div>
 

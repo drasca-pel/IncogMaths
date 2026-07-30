@@ -25,16 +25,8 @@ const GEMINI_MODELS = [
 // Footer
 // ================================
 
-const HUMAN_ASSISTANCE = `
 
-────────────────────────
 
-Need human assistance?
-
-Visit INCOG PSD
-
-────────────────────────
-`;
 
 // ================================
 // Conversation History
