@@ -1089,7 +1089,9 @@ Type your question below to begin.`,
   rel="noopener noreferrer"
   className="font-['JetBrains_Mono'] text-xs text-[#60a5fa] bg-[#0d121b] border border-[#1e2836] hover:border-[#3b82f6] px-4 py-2.5 rounded-[8px] transition flex items-center justify-center gap-2"
 >
-  Ask Community
+  Take a Screenshot & Broadcast to INCOG PSD
+        CLICK HERE
+            ^ 
 </a>
 
   

@@ -175,22 +175,29 @@ Copy Answer
     engineers on INCOG PSD.
   </p>
 
-  <button
-    style={{
-      marginTop:18,
-      padding:"12px 22px",
-      borderRadius:"12px",
-      background:"#2563EB",
-      color:"#fff",
-      border:"none",
-      cursor:"pointer",
-      fontWeight:600
-    }}
-  >
-    Ask Community
-
-    https://incog-psd.vercel.app
-  </button>
+ <button
+  style={{
+    marginTop: 18,
+    padding: "12px 22px",
+    borderRadius: "12px",
+    background: "#2563EB",
+    color: "#fff",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 600
+  }}
+  onClick={() => {
+    window.open(
+      "https://incog-psd.vercel.app",
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }}
+>
+  Take a Screenshot & Broadcast to INCOG PSD
+            CLICK HERE
+                 ^
+</button>
 
 </div>
     </div>

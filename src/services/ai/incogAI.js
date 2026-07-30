@@ -3,15 +3,23 @@
 import { GoogleGenAI } from "@google/genai";
 
 // ================================
-// INCOG AI
+// INCOG AI - API Key & Model Rotation Setup
 // ================================
 
-const ai = new GoogleGenAI({
-  apiKey: import.meta.env.VITE_GEMINI_API_KEY,
-});
+const API_KEYS = [
+  import.meta.env.VITE_GEMINI_API_KEY_1,
+  import.meta.env.VITE_GEMINI_API_KEY_2,
+  import.meta.env.VITE_GEMINI_API_KEY_3,
+  import.meta.env.VITE_GEMINI_API_KEY_4,
+  import.meta.env.VITE_GEMINI_API_KEY_5,
+].filter(Boolean);
+
+if (API_KEYS.length === 0 && import.meta.env.VITE_GEMINI_API_KEY) {
+  API_KEYS.push(import.meta.env.VITE_GEMINI_API_KEY);
+}
 
 // ================================
-// Gemini Model Priority
+// Constants & Configuration
 // ================================
 
 const GEMINI_MODELS = [
@@ -21,140 +29,10 @@ const GEMINI_MODELS = [
   "gemini-3.1-flash-lite",
 ];
 
-// ================================
-// Footer
-// ================================
+const RETRY_DELAY = 500;
+const DEBUG = import.meta.env.DEV;
 
-
-
-
-// ================================
-// Conversation History
-// ================================
-
-function buildHistory(history = []) {
-
-  const contents = [];
-
-  for (const item of history) {
-
-    if (item.user?.trim()) {
-
-      contents.push({
-        role: "user",
-        parts: [
-          {
-            text: item.user,
-          },
-        ],
-      });
-
-    }
-
-    if (item.assistant?.trim()) {
-
-      contents.push({
-        role: "model",
-        parts: [
-          {
-            text: item.assistant,
-          },
-        ],
-      });
-
-    }
-
-  }
-
-  return contents;
-
-}
-
-// ================================
-// Clean JSON
-// ================================
-
-function cleanJSON(text = "") {
-
-  return text
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
-
-}
-
-// ================================
-// Append Footer
-// ================================
-
-function appendFooter(text = "") {
-
-  return `${text.trim()}${HUMAN_ASSISTANCE}`;
-
-}
-
-// ================================
-// Gemini Fallback Engine
-// ================================
-
-async function generateWithFallback(contents) {
-
-  let lastError = null;
-
-  for (const model of GEMINI_MODELS) {
-
-    try {
-
-      console.log(`Trying ${model}...`);
-
-      const response =
-        await ai.models.generateContent({
-          model,
-          contents,
-        });
-
-      const text = response.text;
-
-      if (text && text.trim()) {
-
-        console.log(`${model} succeeded.`);
-
-        return text;
-
-      }
-
-    } catch (error) {
-
-      lastError = error;
-
-      console.warn(
-        `${model} failed:`,
-        error.message
-      );
-
-      await new Promise(resolve =>
-        setTimeout(resolve, 800)
-      );
-
-    }
-
-  }
-
-  throw lastError;
-
-}// ================================
-// SOLVE MATHEMATICS
-// ================================
-
-export async function solveMaths(question, history = []) {
-
-  const contents = buildHistory(history);
-
-  contents.push({
-    role: "user",
-    parts: [
-      {
-        text: `
+const MATH_PROMPT = `
 You are INCOG Mathematics Engine.
 
 You are an expert in:
@@ -169,7 +47,7 @@ Solve the following question step by step.
 
 Question:
 
-${question}
+{{QUESTION}}
 
 Return ONLY valid JSON.
 
@@ -245,56 +123,9 @@ For each step:
 
 The final answer must contain only the final mathematical result in LaTeX.
 Prioritize readability over compactness
-`
-      }
-    ]
-  });
+`;
 
-  try {
-
-    const raw = await generateWithFallback(contents);
-
-    const parsed = JSON.parse(cleanJSON(raw));
-
-    return parsed;
-
-  } catch (error) {
-
-    console.error("Solve Error:", error);
-
-    return {
-
-      question,
-
-      criteria: "",
-
-      variables: {},
-
-      steps: [],
-
-      explanation:
-        "INCOG AI is temporarily unavailable. Please try again later.",
-
-      answer:
-        "No solution generated."
-
-    };
-
-  }
-
-}// ================================
-// AI CHAT ASSISTANT
-// ================================
-
-export async function chatWithAssistant(message, history = []) {
-
-  const contents = buildHistory(history);
-
-  contents.push({
-    role: "user",
-    parts: [
-      {
-        text: `
+const CHAT_PROMPT = `
 You are INCOG AI.
 
 You are an intelligent AI assistant specialising in:
@@ -361,31 +192,163 @@ Simply answer naturally.
 
 User:
 
-${message}
-`
+{{MESSAGE}}
+`;
+
+// ================================
+// Conversation History
+// ================================
+
+function buildHistory(history = []) {
+  const contents = [];
+
+  for (const item of history) {
+    if (item.user?.trim()) {
+      contents.push({
+        role: "user",
+        parts: [{ text: item.user }],
+      });
+    }
+
+    if (item.assistant?.trim()) {
+      contents.push({
+        role: "model",
+        parts: [{ text: item.assistant }],
+      });
+    }
+  }
+
+  return contents;
+}
+
+// ================================
+// Clean JSON
+// ================================
+
+function cleanJSON(text = "") {
+  return text
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
+    .trim();
+}
+
+// ================================
+// Append Footer
+// ================================
+
+function appendFooter(text = "") {
+  return `${text.trim()}`;
+}
+
+// ================================
+// Gemini Key & Model Rotation Fallback Engine
+// ================================
+
+async function generateWithFallback(contents) {
+  if (API_KEYS.length === 0) {
+    throw new Error("No Gemini API keys found in your environment variables.");
+  }
+
+  let lastError = null;
+
+  for (let keyIndex = 0; keyIndex < API_KEYS.length; keyIndex++) {
+    const currentApiKey = API_KEYS[keyIndex];
+    const ai = new GoogleGenAI({ apiKey: currentApiKey });
+
+    for (const model of GEMINI_MODELS) {
+      try {
+        if (DEBUG) {
+          console.log(`Trying Key #${keyIndex + 1} with model ${model}...`);
+        }
+
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+        });
+
+        const text = response.text?.trim();
+
+        if (text) {
+          if (DEBUG) {
+            console.log(`Key #${keyIndex + 1} with ${model} succeeded.`);
+          }
+          return text;
+        }
+      } catch (error) {
+        lastError = error;
+
+        if (DEBUG) {
+          console.warn(`Key #${keyIndex + 1} with ${model} failed:`, error.message);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
       }
-    ]
+    }
+  }
+
+  throw lastError;
+}
+
+// ================================
+// SOLVE MATHEMATICS
+// ================================
+
+export async function solveMaths(question, history = []) {
+  const contents = buildHistory(history);
+
+  const formattedMathPrompt = MATH_PROMPT.replaceAll("{{QUESTION}}", question);
+
+  contents.push({
+    role: "user",
+    parts: [{ text: formattedMathPrompt }],
   });
 
   try {
-
-    const reply = await generateWithFallback(contents);
-
-    return (reply);
-
+    const raw = await generateWithFallback(contents);
+    const parsed = JSON.parse(cleanJSON(raw));
+    return parsed;
   } catch (error) {
+    if (DEBUG) {
+      console.error("Solve Error:", error);
+    }
 
-    console.error(error);
-
-    return appendFooter(
-
-      "INCOG AI is temporarily unavailable.\n\nPlease try again later."
-
-    );
-
+    return {
+      question,
+      criteria: "",
+      variables: {},
+      steps: [],
+      explanation: "INCOG AI is temporarily unavailable. Please try again later.",
+      answer: "No solution generated.",
+    };
   }
+}
 
-}// =====================================
+// ================================
+// AI CHAT ASSISTANT
+// ================================
+
+export async function chatWithAssistant(message, history = []) {
+  const contents = buildHistory(history);
+
+  const formattedChatPrompt = CHAT_PROMPT.replaceAll("{{MESSAGE}}", message);
+
+  contents.push({
+    role: "user",
+    parts: [{ text: formattedChatPrompt }],
+  });
+
+  try {
+    const reply = await generateWithFallback(contents);
+    return reply;
+  } catch (error) {
+    if (DEBUG) {
+      console.error(error);
+    }
+    return appendFooter("INCOG AI is temporarily unavailable.\n\nPlease try again later.");
+  }
+}
+
+// =====================================
 // OPTIONAL HELPER EXPORTS
 // =====================================
 
