@@ -186,6 +186,8 @@ x^2+5x+6=0
 
 \\int
 
+\\dots
+
 Do NOT return JSON.
 
 Simply answer naturally.
