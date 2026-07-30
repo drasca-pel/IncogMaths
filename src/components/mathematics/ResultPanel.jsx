@@ -50,9 +50,11 @@ export default function ResultPanel({ result }) {
       {result.question && (
         <div style={styles.card}>
           <h3 style={styles.title}>Question</h3>
-         <div style={styles.equation}>
-  <MathDisplay latex={result.question} />
-</div>
+          <math-field 
+            read-only 
+            value={result.question} 
+            style={styles.mathField}
+          />
         </div>
       )}
 
