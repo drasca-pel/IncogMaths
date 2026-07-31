@@ -1,9 +1,7 @@
-// src/services/ai/incogAI.js
-
 import { GoogleGenAI } from "@google/genai";
 
 // ================================
-// INCOG AI - API Key & Model Rotation Setup
+// INCOG AI - API KEY & MODEL ROTATION
 // ================================
 
 const API_KEYS = [
@@ -19,7 +17,7 @@ if (API_KEYS.length === 0 && import.meta.env.VITE_GEMINI_API_KEY) {
 }
 
 // ================================
-// Constants & Configuration
+// MODELS
 // ================================
 
 const GEMINI_MODELS = [
@@ -31,6 +29,10 @@ const GEMINI_MODELS = [
 
 const RETRY_DELAY = 500;
 const DEBUG = import.meta.env.DEV;
+
+// ================================
+// MATHEMATICS SOLVER PROMPT
+// ================================
 
 const MATH_PROMPT = `
 You are INCOG Mathematics Engine.
@@ -76,23 +78,23 @@ Return EXACTLY this structure:
 
 Rules:
 
-1. "equation" MUST be valid LaTeX.
+1. "equation" MUST contain valid LaTeX.
 
 Examples:
 
-\\frac{a}{b}
+\\\\frac{a}{b}
 
 x^2+5x+6=0
 
-\\sqrt{x}
+\\\\sqrt{x}
 
-\\sin(x)
+\\\\sin(x)
 
-\\cos(x)
+\\\\cos(x)
 
-\\tan(x)
+\\\\tan(x)
 
-\\int x^2dx
+\\\\int x^2 dx
 
 2. "title" and "explanation" must be plain English.
 
@@ -102,28 +104,31 @@ x^2+5x+6=0
 
 5. The final answer must be placed inside "answer".
 
-6. Output ONLY JSON.
+6. The final "answer" must contain only the mathematical result in LaTeX.
 
-Formatting Rules
+7. Do not put normal English inside the equation field.
+
+Formatting Rules:
 
 - Return ONLY valid JSON.
 - Every explanation must be written in clear English.
 - Leave a blank line between paragraphs.
 - Each solution step must be independent.
 - Do not merge multiple ideas into one paragraph.
-- Each "explanation" should contain only one logical step.
-- Never write one long block of text.
-- Keep explanations concise and readable.
+- Each explanation should contain only one logical step.
 
 For each step:
 
 1. Give the title.
 2. Explain that step in one short paragraph.
-3. Put the equation in the "equation" field only.
+3. Put the mathematical equation in the equation field only.
 
-The final answer must contain only the final mathematical result in LaTeX.
-Prioritize readability over compactness
+Prioritize readability over compactness.
 `;
+
+// ================================
+// CHAT PROMPT
+// ================================
 
 const CHAT_PROMPT = `
 You are INCOG AI.
@@ -147,64 +152,119 @@ Your personality:
 
 GENERAL RULES
 
-• Respond naturally like ChatGPT.
+Respond naturally like ChatGPT.
 
-• Do NOT introduce yourself every response.
+Do NOT introduce yourself every response.
 
-• Do NOT say:
+Do NOT say:
 "I am your tutor."
 
-• Do NOT mention Google.
+Do NOT mention Google.
 
-• Do NOT mention Gemini.
+Do NOT mention Gemini.
 
-• Do NOT use markdown code blocks.
+Do NOT use markdown code blocks.
 
-• If the user asks a mathematical question:
+IMPORTANT MATHEMATICS FORMATTING
+
+When writing mathematics, ALWAYS use LaTeX.
+
+For INLINE mathematics, wrap the LaTeX in:
+
+\\\\( ... \\\\)
+
+Example:
+
+The value of x is \\\\(x=5\\\\).
+
+For larger/display equations, use:
+
+$$
+...
+$$
+
+Example:
+
+$$
+x^2+5x+6=0
+$$
+
+Another example:
+
+$$
+x=\\\\frac{-b\\\\pm\\\\sqrt{b^2-4ac}}{2a}
+$$
+
+Never write raw LaTeX directly in normal text.
+
+BAD:
+
+The answer is x=\\\\frac{10}{2}.
+
+GOOD:
+
+The answer is \\\\(x=\\\\frac{10}{2}\\\\).
+
+For normal English, use ordinary text.
+
+Do not put ordinary English inside LaTeX.
+
+For example, do NOT write:
+
+\\\\text{The answer is } x=5
+
+Instead write:
+
+The answer is \\\\(x=5\\\\).
+
+Keep paragraphs short.
+
+Use line breaks when they improve readability.
+
+If the user asks a mathematical question:
 
 - Explain naturally.
+- Use steps when useful.
+- Use proper LaTeX for every mathematical expression.
+- Make the mathematics easy to read.
 
-- Use steps ONLY where necessary.
+Supported mathematical notation includes:
 
-- Equations MUST be written in proper LaTeX.
+\\\\frac{a}{b}
 
-Examples:
+x^2
 
-\\frac{10}{2}
+\\\\sqrt{x}
 
-x^2+5x+6=0
+\\\\sin(x)
 
-\\sqrt{x}
+\\\\cos(x)
 
-\\sin(x)
+\\\\tan(x)
 
-\\cos(x)
+\\\\pi
 
-\\tan(x)
+\\\\int
 
-\\pi
+\\\\sum
 
-\\int
+\\\\times
 
-\\dots
+\\\\div
 
-\\times
+\\\\pm
 
-\\divide
+\\\\leq
 
-\\substract
+\\\\geq
 
-Do NOT return JSON.
-
-Simply answer naturally.
-
-User:
+User message:
 
 {{MESSAGE}}
 `;
 
 // ================================
-// Conversation History
+// BUILD CONVERSATION HISTORY
 // ================================
 
 function buildHistory(history = []) {
@@ -214,14 +274,22 @@ function buildHistory(history = []) {
     if (item.user?.trim()) {
       contents.push({
         role: "user",
-        parts: [{ text: item.user }],
+        parts: [
+          {
+            text: item.user,
+          },
+        ],
       });
     }
 
     if (item.assistant?.trim()) {
       contents.push({
         role: "model",
-        parts: [{ text: item.assistant }],
+        parts: [
+          {
+            text: item.assistant,
+          },
+        ],
       });
     }
   }
@@ -230,7 +298,7 @@ function buildHistory(history = []) {
 }
 
 // ================================
-// Clean JSON
+// CLEAN JSON
 // ================================
 
 function cleanJSON(text = "") {
@@ -241,32 +309,43 @@ function cleanJSON(text = "") {
 }
 
 // ================================
-// Append Footer
+// FOOTER
 // ================================
 
 function appendFooter(text = "") {
-  return `${text.trim()}`;
+  return text.trim();
 }
 
 // ================================
-// Gemini Key & Model Rotation Fallback Engine
+// GEMINI FALLBACK ENGINE
 // ================================
 
 async function generateWithFallback(contents) {
   if (API_KEYS.length === 0) {
-    throw new Error("No Gemini API keys found in your environment variables.");
+    throw new Error(
+      "No Gemini API keys found in your environment variables."
+    );
   }
 
   let lastError = null;
 
-  for (let keyIndex = 0; keyIndex < API_KEYS.length; keyIndex++) {
+  for (
+    let keyIndex = 0;
+    keyIndex < API_KEYS.length;
+    keyIndex++
+  ) {
     const currentApiKey = API_KEYS[keyIndex];
-    const ai = new GoogleGenAI({ apiKey: currentApiKey });
+
+    const ai = new GoogleGenAI({
+      apiKey: currentApiKey,
+    });
 
     for (const model of GEMINI_MODELS) {
       try {
         if (DEBUG) {
-          console.log(`Trying Key #${keyIndex + 1} with model ${model}...`);
+          console.log(
+            `Trying Key #${keyIndex + 1} with model ${model}...`
+          );
         }
 
         const response = await ai.models.generateContent({
@@ -278,18 +357,26 @@ async function generateWithFallback(contents) {
 
         if (text) {
           if (DEBUG) {
-            console.log(`Key #${keyIndex + 1} with ${model} succeeded.`);
+            console.log(
+              `Key #${keyIndex + 1} with ${model} succeeded.`
+            );
           }
+
           return text;
         }
       } catch (error) {
         lastError = error;
 
         if (DEBUG) {
-          console.warn(`Key #${keyIndex + 1} with ${model} failed:`, error.message);
+          console.warn(
+            `Key #${keyIndex + 1} with ${model} failed:`,
+            error.message
+          );
         }
 
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        await new Promise(resolve =>
+          setTimeout(resolve, RETRY_DELAY)
+        );
       }
     }
   }
@@ -301,19 +388,34 @@ async function generateWithFallback(contents) {
 // SOLVE MATHEMATICS
 // ================================
 
-export async function solveMaths(question, history = []) {
+export async function solveMaths(
+  question,
+  history = []
+) {
   const contents = buildHistory(history);
 
-  const formattedMathPrompt = MATH_PROMPT.replaceAll("{{QUESTION}}", question);
+  const formattedMathPrompt =
+    MATH_PROMPT.replaceAll(
+      "{{QUESTION}}",
+      question
+    );
 
   contents.push({
     role: "user",
-    parts: [{ text: formattedMathPrompt }],
+    parts: [
+      {
+        text: formattedMathPrompt,
+      },
+    ],
   });
 
   try {
     const raw = await generateWithFallback(contents);
-    const parsed = JSON.parse(cleanJSON(raw));
+
+    const parsed = JSON.parse(
+      cleanJSON(raw)
+    );
+
     return parsed;
   } catch (error) {
     if (DEBUG) {
@@ -325,40 +427,57 @@ export async function solveMaths(question, history = []) {
       criteria: "",
       variables: {},
       steps: [],
-      explanation: "INCOG AI is temporarily unavailable. Please try again later.",
+      explanation:
+        "INCOG AI is temporarily unavailable. Please try again later.",
       answer: "No solution generated.",
     };
   }
 }
 
 // ================================
-// AI CHAT ASSISTANT
+// AI CHAT
 // ================================
 
-export async function chatWithAssistant(message, history = []) {
+export async function chatWithAssistant(
+  message,
+  history = []
+) {
   const contents = buildHistory(history);
 
-  const formattedChatPrompt = CHAT_PROMPT.replaceAll("{{MESSAGE}}", message);
+  const formattedChatPrompt =
+    CHAT_PROMPT.replaceAll(
+      "{{MESSAGE}}",
+      message
+    );
 
   contents.push({
     role: "user",
-    parts: [{ text: formattedChatPrompt }],
+    parts: [
+      {
+        text: formattedChatPrompt,
+      },
+    ],
   });
 
   try {
-    const reply = await generateWithFallback(contents);
+    const reply =
+      await generateWithFallback(contents);
+
     return reply;
   } catch (error) {
     if (DEBUG) {
       console.error(error);
     }
-    return appendFooter("INCOG AI is temporarily unavailable.\n\nPlease try again later.");
+
+    return appendFooter(
+      "INCOG AI is temporarily unavailable.\n\nPlease try again later."
+    );
   }
 }
 
-// =====================================
-// OPTIONAL HELPER EXPORTS
-// =====================================
+// ================================
+// EXPORTS
+// ================================
 
 export {
   buildHistory,
@@ -366,7 +485,3 @@ export {
   generateWithFallback,
   appendFooter,
 };
-
-// =====================================
-// END OF INCOG AI
-// =====================================

@@ -691,4 +691,35 @@ textarea:focus-visible {
     font-size: 8px;
   }
 
+}  /* ================================
+   INCOG AI — MathLive Chat
+================================ */
+
+.incog-inline-math {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+.incog-display-math {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 12px 0;
+  margin: 8px 0;
+}
+
+.incog-display-math math-field,
+.incog-inline-math math-field {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+}
+
+.incog-chat-paragraph {
+  line-height: 1.7;
+  word-spacing: normal;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
