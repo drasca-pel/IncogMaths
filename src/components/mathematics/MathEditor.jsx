@@ -17,6 +17,7 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
 
       field.focus();
       field.insert(latex);
+
       onChange(field.value);
     },
 
@@ -26,7 +27,6 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
 
       field.focus();
 
-      // Insert ordinary text with proper spaces.
       field.insert(`\\text{${word}}`);
 
       onChange(field.value);
@@ -37,22 +37,38 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
     const field = mathFieldRef.current;
     if (!field) return;
 
+    // Do not automatically open the virtual keyboard.
     field.virtualKeyboardMode = "manual";
 
     /*
-      smartMode allows MathLive to switch between
-      mathematical input and ordinary words.
-
-      Example:
+      Smart mode lets MathLive understand mixed input such as:
 
       Find the value of x
 
-      becomes readable text instead of:
+      and:
 
-      F i n d t h e v a l u e o f x
+      If x > 0, then 2x + 5 = 15
+
+      It automatically switches between text and
+      mathematical modes when appropriate.
     */
     field.smartMode = true;
 
+    /*
+      IMPORTANT:
+
+      Space in math mode normally has no effect or can
+      be interpreted as navigation, especially inside
+      superscripts/fractions.
+
+      Give MathLive an actual mathematical spacing command
+      instead of leaving the space completely empty.
+
+      Medium mathematical spacing is used here.
+    */
+    field.mathModeSpace = "\\:";
+
+    // Disable the MathLive menu.
     field.menuItems = [];
 
     const handleInput = () => {
@@ -77,12 +93,15 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
 
   return (
     <div className="w-full rounded-3xl bg-[#141A22] border border-zinc-800">
+
+      {/* Header */}
       <div className="px-5 py-4 border-b border-zinc-800">
         <h2 className="font-semibold text-lg">
           Equation Editor
         </h2>
       </div>
 
+      {/* Editor */}
       <div className="p-5">
         <math-field
           ref={mathFieldRef}
@@ -101,6 +120,7 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
           "
         />
       </div>
+
     </div>
   );
 });
