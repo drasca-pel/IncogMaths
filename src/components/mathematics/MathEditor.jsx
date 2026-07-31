@@ -1,4 +1,4 @@
-import {
+import React, {
   useEffect,
   useRef,
   useState,
@@ -8,8 +8,9 @@ import {
 
 import "mathlive";
 
-const BREAKPOINT = 640; // matches Tailwind's `sm`
+const BREAKPOINT = 640;
 const STEP = 2;
+const SCROLL_AMOUNT = 80; // px per arrow tap
 
 function getFontBounds() {
   const isPhone = window.innerWidth < BREAKPOINT;
@@ -25,11 +26,6 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
 
   const [fontSize, setFontSize] = useState(getFontBounds().max);
 
-  // Shrinks font step by step until the equation fits inside the
-  // visible viewport, or the min bound is hit — at which point we
-  // stop shrinking and let the viewport's own horizontal scroll
-  // take over. Measured against viewportRef (not the field itself),
-  // since the field's own box can grow with its content.
   function fitFont() {
     const field = mathFieldRef.current;
     const viewport = viewportRef.current;
@@ -52,6 +48,19 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
     mathFieldRef.current?.executeCommand("toggleVirtualKeyboard");
   }
 
+  // Scroll the equation left/right without touching the caret or
+  // triggering a selection — this only moves the viewport's scroll
+  // position, it never calls focus() or any editing command.
+  function scrollEquation(direction) {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    viewport.scrollBy({
+      left: direction * SCROLL_AMOUNT,
+      behavior: "smooth"
+    });
+  }
+
   useImperativeHandle(ref, () => ({
     insertFormula(latex) {
       const field = mathFieldRef.current;
@@ -60,7 +69,6 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
       field.focus();
       field.insert(latex);
 
-      // Keep the complete MathLive value — resizing never touches this.
       onChange(field.value);
 
       requestAnimationFrame(() => {
@@ -73,12 +81,8 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
     const field = mathFieldRef.current;
     if (!field) return;
 
-    // Manual means MathLive won't automatically open the large
-    // virtual keyboard on focus — we control it via the button below.
     field.virtualKeyboardMode = "manual";
     field.smartMode = false;
-    // Note: menuItems is intentionally left untouched (not set to []),
-    // since we want to keep MathLive's native menu available.
 
     const handleInput = () => {
       onChange(field.value);
@@ -120,20 +124,23 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
   }, [value]);
 
   return (
-    <div className="w-full min-w-0 rounded-3xl bg-[#141A22] border border-zinc-800 overflow-hidden">
-      {/* Hides only the native keyboard-toggle icon inside the field —
-          it's rebuilt as the "Keyboard" button below. The native
-          menu-toggle icon is left alone since there's no confirmed
-          public command yet to relocate it safely. */}
+    <div className="w-full min-w-0 rounded-[var(--radius)] bg-[var(--bg-panel)] border border-[var(--border)] overflow-hidden">
       <style>{`
         math-field::part(virtual-keyboard-toggle) {
           display: none;
         }
+        /* Softer selection color — a subtle blue tint instead of the
+           default bright highlight, so selecting inside the equation
+           doesn't read as "about to cut/delete this". */
+        math-field {
+          --selection-background-color: rgba(96, 165, 250, 0.18);
+          --selection-color: var(--text-primary);
+        }
       `}</style>
 
       {/* Header */}
-      <div className="px-5 py-4 border-b border-zinc-800">
-        <h2 className="font-semibold text-lg">Equation Editor</h2>
+      <div className="px-5 py-4 border-b border-[var(--border)]">
+        <h2 className="font-['Space_Grotesk'] font-semibold text-lg text-[var(--text-primary)]">Equation Editor</h2>
       </div>
 
       {/* Equation area */}
@@ -143,10 +150,10 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
           className="
             w-full
             min-w-0
-            rounded-2xl
-            bg-[#0B0F14]
+            rounded-[var(--radius-sm)]
+            bg-[var(--bg-void)]
             border
-            border-zinc-700
+            border-[var(--border-strong)]
             overflow-x-auto
             overflow-y-hidden
           "
@@ -160,7 +167,7 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
               sm:h-[170px]
               p-4
               sm:p-5
-              text-white
+              text-[var(--blue-glow)]
               outline-none
               bg-transparent
             "
@@ -171,16 +178,34 @@ const MathEditor = forwardRef(({ value, onChange }, ref) => {
           />
         </div>
 
-        {/* Controls row — keyboard toggle relocated here */}
-        <div className="mt-3 min-h-[44px] flex items-center justify-between">
+        {/* Controls row */}
+        <div className="mt-3 min-h-[44px] flex items-center justify-between gap-2">
           <button
             onClick={toggleKeyboard}
-            className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-sm font-medium transition"
+            className="px-4 py-2 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-strong)] hover:border-[var(--blue-primary)] text-[var(--text-primary)] hover:text-[var(--blue-glow)] text-sm font-medium transition cursor-pointer"
           >
             Keyboard
           </button>
-          {/* Native menu-toggle icon still renders inside the field
-              for now — see note above the <style> block */}
+
+          {/* Left/right scroll — lets the user look back at an
+              earlier part of a long equation without losing their
+              place in the input or disturbing the caret */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => scrollEquation(-1)}
+              aria-label="Scroll equation left"
+              className="w-9 h-9 flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-strong)] hover:border-[var(--blue-primary)] text-[var(--text-primary)] hover:text-[var(--blue-glow)] transition cursor-pointer"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => scrollEquation(1)}
+              aria-label="Scroll equation right"
+              className="w-9 h-9 flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-strong)] hover:border-[var(--blue-primary)] text-[var(--text-primary)] hover:text-[var(--blue-glow)] transition cursor-pointer"
+            >
+              →
+            </button>
+          </div>
         </div>
       </div>
     </div>
