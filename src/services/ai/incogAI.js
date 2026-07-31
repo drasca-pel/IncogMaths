@@ -188,6 +188,12 @@ x^2+5x+6=0
 
 \\dots
 
+\\times
+
+\\divide
+
+\\substract
+
 Do NOT return JSON.
 
 Simply answer naturally.
